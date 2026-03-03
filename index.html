@@ -3,166 +3,114 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zulfikar Maps</title>
-
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
+<title>Game Tangkap Ayam</title>
 <style>
 body {
   margin:0;
-  font-family:Arial, sans-serif;
+  font-family: Arial, sans-serif;
+  text-align:center;
+  background: linear-gradient(to bottom, #87CEEB, #ffffff);
+  overflow:hidden;
 }
 
-#map {
-  height:100vh;
+h1 {
+  margin-top:20px;
+}
+
+#score, #timer {
+  font-size:20px;
+  margin:10px;
+}
+
+#gameArea {
+  position:relative;
   width:100%;
+  height:80vh;
 }
 
-.search-box {
+.chicken {
   position:absolute;
-  top:15px;
-  left:50%;
-  transform:translateX(-50%);
-  z-index:1000;
-  background:white;
-  padding:10px;
+  font-size:50px;
+  cursor:pointer;
+  transition: transform 0.1s;
+}
+
+.chicken:active {
+  transform: scale(0.8);
+}
+
+#startBtn {
+  padding:10px 20px;
+  font-size:18px;
+  border:none;
   border-radius:10px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.2);
-  display:flex;
-  gap:5px;
-}
-
-.search-box input {
-  padding:8px;
-  width:250px;
-  border:1px solid #ccc;
-  border-radius:5px;
-}
-
-.search-box button {
-  padding:8px 12px;
-  border:none;
-  background:#007bff;
-  color:white;
-  border-radius:5px;
+  background:orange;
   cursor:pointer;
-}
-
-.control-btn {
-  position:absolute;
-  right:15px;
-  top:15px;
-  z-index:1000;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-
-.control-btn button {
-  padding:8px;
-  border:none;
-  border-radius:5px;
-  cursor:pointer;
-}
-
-.dark {
-  filter: invert(90%) hue-rotate(180deg);
 }
 </style>
 </head>
 
 <body>
 
-<div class="search-box">
-  <input type="text" id="search" placeholder="Cari lokasi...">
-  <button onclick="searchLocation()">Cari</button>
-</div>
+<h1>🐔 Tangkap Si Ayam Kabur!</h1>
+<div id="score">Skor: 0</div>
+<div id="timer">Waktu: 20</div>
+<button id="startBtn" onclick="startGame()">Mulai Game</button>
 
-<div class="control-btn">
-  <button onclick="getLocation()">📍 Lokasi Saya</button>
-  <button onclick="toggleDark()">🌙 Dark</button>
-  <button onclick="map.zoomIn()">➕</button>
-  <button onclick="map.zoomOut()">➖</button>
-</div>
-
-<div id="map"></div>
-
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<div id="gameArea"></div>
 
 <script>
-var map = L.map('map').setView([-7.250445, 112.768845], 13); // Default Surabaya
+let score = 0;
+let timeLeft = 20;
+let gameInterval;
+let timerInterval;
 
-// OpenStreetMap Tile
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
+function startGame() {
+  score = 0;
+  timeLeft = 20;
+  document.getElementById("score").innerText = "Skor: " + score;
+  document.getElementById("timer").innerText = "Waktu: " + timeLeft;
+  document.getElementById("startBtn").style.display = "none";
 
-var marker;
-var routeLayer;
+  spawnChicken();
+  gameInterval = setInterval(spawnChicken, 800);
 
-// Geolocation
-function getLocation() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(function(position) {
-      var lat = position.coords.latitude;
-      var lon = position.coords.longitude;
-      map.setView([lat, lon], 15);
-      L.marker([lat, lon]).addTo(map)
-        .bindPopup("Lokasi Anda")
-        .openPopup();
-    });
-  } else {
-    alert("Geolocation tidak didukung browser.");
-  }
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    document.getElementById("timer").innerText = "Waktu: " + timeLeft;
+    if(timeLeft <= 0){
+      endGame();
+    }
+  }, 1000);
 }
 
-// Search Location (Nominatim API)
-function searchLocation() {
-  var query = document.getElementById("search").value;
-  fetch("https://nominatim.openstreetmap.org/search?format=json&q=" + query)
-    .then(res => res.json())
-    .then(data => {
-      if(data.length > 0){
-        var lat = data[0].lat;
-        var lon = data[0].lon;
-        map.setView([lat, lon], 15);
+function spawnChicken(){
+  const gameArea = document.getElementById("gameArea");
+  const chicken = document.createElement("div");
+  chicken.classList.add("chicken");
+  chicken.innerText = "🐔";
 
-        if(marker) map.removeLayer(marker);
-        marker = L.marker([lat, lon]).addTo(map)
-          .bindPopup(query)
-          .openPopup();
-      }
-    });
+  chicken.style.left = Math.random() * (window.innerWidth - 60) + "px";
+  chicken.style.top = Math.random() * (window.innerHeight - 200) + "px";
+
+  chicken.onclick = function(){
+    score++;
+    document.getElementById("score").innerText = "Skor: " + score;
+    chicken.remove();
+  };
+
+  gameArea.appendChild(chicken);
+
+  setTimeout(() => {
+    chicken.remove();
+  }, 700);
 }
 
-// Tambah marker klik kanan
-map.on('contextmenu', function(e){
-  L.marker(e.latlng).addTo(map)
-    .bindPopup("Marker tambahan")
-    .openPopup();
-});
-
-// Routing OSRM
-map.on('click', function(e){
-  if(marker){
-    var start = marker.getLatLng();
-    var end = e.latlng;
-
-    fetch(`https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`)
-      .then(res => res.json())
-      .then(data => {
-        if(routeLayer) map.removeLayer(routeLayer);
-        var route = L.geoJSON(data.routes[0].geometry).addTo(map);
-        routeLayer = route;
-      });
-  }
-});
-
-// Dark Mode
-function toggleDark(){
-  document.body.classList.toggle("dark");
+function endGame(){
+  clearInterval(gameInterval);
+  clearInterval(timerInterval);
+  document.getElementById("startBtn").style.display = "inline-block";
+  alert("Game Selesai! Skor kamu: " + score);
 }
 </script>
 
