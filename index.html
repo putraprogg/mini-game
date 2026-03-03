@@ -91,7 +91,9 @@
             </p>
             <div class="flex items-center justify-center gap-4">
                 <a href="#games-section" class="px-8 py-4 bg-white text-black font-bold rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/10">Quick Play</a>
-                <button class="px-8 py-4 bg-white/5 border border-white/10 font-bold rounded-2xl hover:bg-white/10 transition-all">Join Discord</button>
+                <button class="play-btn" onclick="openEscapeRoom()">
+    Play
+</button>
             </div>
         </div>
     </section>
@@ -306,4 +308,11 @@ document.addEventListener('error', (e) => {
 
 
 <script src="escape-room.js"></script>
+    <script>
+function openEscapeRoom() {
+    document.getElementById("game-modal").classList.remove("hidden");
+    loadEscapeRoom();
+}
+</script>
 </body></html>
+
