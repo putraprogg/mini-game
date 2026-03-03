@@ -6,46 +6,70 @@
 <title>SYSTEM BREACHED</title>
 
 <style>
-body {
+body{
   margin:0;
   background:black;
   color:#00ff00;
-  font-family: "Courier New", monospace;
+  font-family:Courier New, monospace;
   overflow:hidden;
-  cursor: crosshair;
+  cursor:crosshair;
 }
 
-#terminal {
+#terminal{
   padding:20px;
   height:100vh;
-  overflow:hidden;
+  overflow:auto;
   white-space:pre-wrap;
-  font-size:14px;
 }
 
-.glitch {
-  animation: glitch 0.2s infinite;
+.glitch{
+  animation:glitch 0.15s infinite;
 }
 
-@keyframes glitch {
-  0% { transform: translate(0px, 0px); }
-  25% { transform: translate(-2px, 2px); }
-  50% { transform: translate(2px, -2px); }
-  75% { transform: translate(-2px, -2px); }
-  100% { transform: translate(2px, 2px); }
+@keyframes glitch{
+  0%{transform:translate(0)}
+  25%{transform:translate(-3px,3px)}
+  50%{transform:translate(3px,-3px)}
+  75%{transform:translate(-3px,-3px)}
+  100%{transform:translate(3px,3px)}
 }
 
-.red {
-  color:red;
-}
-
-.blink {
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
+.red{color:red;}
+.big{font-size:22px;}
+.blink{animation:blink 1s infinite;}
+@keyframes blink{
   0%,50%,100%{opacity:1;}
   25%,75%{opacity:0;}
+}
+
+#camera{
+  position:fixed;
+  top:10px;
+  right:10px;
+  width:200px;
+  height:150px;
+  background:#111;
+  border:3px solid red;
+  display:none;
+  color:red;
+  text-align:center;
+  font-size:12px;
+}
+
+#mask{
+  position:fixed;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  width:150px;
+  display:none;
+  animation:float 2s infinite ease-in-out;
+}
+
+@keyframes float{
+  0%{transform:translate(-50%,0)}
+  50%{transform:translate(-50%,-10px)}
+  100%{transform:translate(-50%,0)}
 }
 </style>
 </head>
@@ -53,89 +77,115 @@ body {
 <body onclick="triggerChaos()">
 
 <div id="terminal">
-Initializing system...
-Connecting to secure server...
-Access granted...
+Booting secure system...
+Connecting firewall...
+System ready...
 </div>
 
+<div id="camera">📸 CAMERA ACTIVE<br><br><span class="blink">Recording...</span></div>
+
+<img id="mask" src="https://upload.wikimedia.org/wikipedia/commons/4/4f/Guy_Fawkes_Mask.png">
+
 <script>
-let errorCount = 0;
+let chaosLevel = 0;
+let alarmStarted = false;
+let countdownStarted = false;
 const terminal = document.getElementById("terminal");
 
-// Sound generator (beep)
-function playErrorSound(){
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const oscillator = ctx.createOscillator();
-  oscillator.type = "square";
-  oscillator.frequency.setValueAtTime(200 + Math.random()*600, ctx.currentTime);
-  oscillator.connect(ctx.destination);
-  oscillator.start();
-  oscillator.stop(ctx.currentTime + 0.1);
+// Alarm Sound Generator
+let alarmInterval;
+function startAlarm(){
+  if(alarmStarted) return;
+  alarmStarted = true;
+  alarmInterval = setInterval(()=>{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    osc.type="sawtooth";
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
+  },300);
 }
 
+// Random error
 function randomError(){
-  const messages = [
-    "ERROR 0x000F4 SYSTEM FAILURE",
-    "ACCESS DENIED",
-    "FIREWALL DISABLED",
-    "PASSWORD LEAK DETECTED",
-    "HACKER IP: 192.168." + Math.floor(Math.random()*255),
-    "DATA BREACH IN PROGRESS",
-    "ROOT ACCESS GRANTED",
-    "ENCRYPTION BYPASSED",
-    "SENDING FILES...",
-    "DOWNLOADING VIRUS.exe"
+  const errors=[
+    "ENCRYPTING FILES...",
+    "ACCESSING CAMERA...",
+    "FIREWALL DESTROYED",
+    "PASSWORD STOLEN",
+    "UPLOADING DATA...",
+    "IP TRACE INITIATED",
+    "RANSOMWARE DEPLOYED",
+    "SECURITY FAILURE",
+    "DELETING SYSTEM32...",
+    "BITCOIN PAYMENT REQUIRED"
   ];
-  return messages[Math.floor(Math.random()*messages.length)];
+  return errors[Math.floor(Math.random()*errors.length)];
 }
 
 function triggerChaos(){
-  errorCount++;
-  playErrorSound();
+  chaosLevel++;
 
-  const line = document.createElement("div");
-  line.textContent = randomError();
-  if(errorCount % 3 === 0){
-    line.classList.add("red");
-  }
-
+  const line=document.createElement("div");
+  line.textContent=randomError();
+  if(chaosLevel%2===0) line.classList.add("red");
   terminal.appendChild(line);
+  terminal.scrollTop=terminal.scrollHeight;
 
-  // Tambah glitch effect
-  if(errorCount > 5){
+  if(chaosLevel>3){
     document.body.classList.add("glitch");
+    document.getElementById("camera").style.display="block";
   }
 
-  // Tambah spam error otomatis
-  if(errorCount > 10){
-    setInterval(() => {
-      const autoLine = document.createElement("div");
-      autoLine.textContent = randomError();
-      autoLine.classList.add("red");
-      terminal.appendChild(autoLine);
-      playErrorSound();
-      window.scrollTo(0, document.body.scrollHeight);
-    }, 300);
+  if(chaosLevel>6){
+    startAlarm();
+    document.body.style.background="darkred";
   }
 
-  // Mode total chaos
-  if(errorCount > 20){
-    terminal.innerHTML += "\n\n<span class='blink red'>SYSTEM COMPROMISED</span>\n";
-    document.body.style.background = "darkred";
+  if(chaosLevel>8){
+    document.getElementById("mask").style.display="block";
   }
 
-  window.scrollTo(0, document.body.scrollHeight);
+  if(chaosLevel>10 && !countdownStarted){
+    startCountdown();
+  }
+
+  if(chaosLevel>2){
+    document.documentElement.requestFullscreen().catch(()=>{});
+  }
 }
 
-// Auto text typing effect
-setInterval(() => {
-  if(errorCount < 5){
-    const typing = document.createElement("div");
-    typing.textContent = "Scanning port " + Math.floor(Math.random()*9999) + "...";
-    terminal.appendChild(typing);
-    window.scrollTo(0, document.body.scrollHeight);
-  }
-}, 1000);
+// Fake Encryption
+function fakeEncrypt(){
+  const files=["photo.jpg","document.docx","skripsi.pdf","data.xlsx","video.mp4"];
+  files.forEach(file=>{
+    const enc=document.createElement("div");
+    enc.innerHTML="🔒 "+file+" → <span class='red'>ENCRYPTED</span>";
+    terminal.appendChild(enc);
+  });
+}
+
+// Countdown Self Destruct
+function startCountdown(){
+  countdownStarted=true;
+  fakeEncrypt();
+
+  let time=15;
+  const cd=document.createElement("div");
+  cd.classList.add("big","red","blink");
+  terminal.appendChild(cd);
+
+  const interval=setInterval(()=>{
+    cd.textContent="SELF DESTRUCT IN: "+time+"s";
+    time--;
+    if(time<0){
+      clearInterval(interval);
+      document.body.innerHTML="<h1 style='color:red;text-align:center;margin-top:20%;font-size:50px;'>💀 SYSTEM DESTROYED 💀</h1>";
+    }
+  },1000);
+}
 </script>
 
 </body>
