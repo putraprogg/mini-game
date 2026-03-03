@@ -1,159 +1,227 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Space Exploration Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess vs AI</title>
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard.min.css"/>
+
 <style>
-body { margin:0; overflow:hidden; background:black; }
-#info {
- position:absolute;
- top:10px;
- left:10px;
- color:white;
- font-family:Arial;
- z-index:100;
+body{
+  margin:0;
+  font-family:Arial;
+  background:#1e1e1e;
+  color:white;
+  text-align:center;
+}
+#board{
+  width:90vw;
+  max-width:500px;
+  margin:20px auto;
+}
+.controls{
+  margin:10px;
+}
+button, select{
+  padding:8px;
+  margin:5px;
+  border:none;
+  border-radius:5px;
+}
+.move-history{
+  max-height:150px;
+  overflow:auto;
+  background:#111;
+  padding:10px;
+  margin:10px auto;
+  width:90%;
+  max-width:500px;
+}
+.highlight{
+  background:radial-gradient(circle, yellow 30%, transparent 30%);
+}
+.dark-mode{
+  background:#f4f4f4;
+  color:black;
 }
 </style>
 </head>
+
 <body>
-<div id="info">
-🎮 WASD = Gerak | Mouse = Arahkan kamera | Klik planet untuk ledakkan 💥
+
+<h2>♟️ Chess vs AI</h2>
+
+<div id="board"></div>
+
+<div class="controls">
+Difficulty:
+<select id="difficulty">
+<option value="2">Easy</option>
+<option value="3" selected>Medium</option>
+<option value="4">Hard</option>
+</select>
+
+<button onclick="undoMove()">Undo</button>
+<button onclick="restartGame()">Restart</button>
+<button onclick="flipBoard()">Flip</button>
+<button onclick="toggleDark()">Dark Mode</button>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/PointerLockControls.js"></script>
+<div id="status"></div>
+<div class="move-history" id="history"></div>
+
+<audio id="moveSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_115b9f28d6.mp3?filename=chess-move-6465.mp3"></audio>
+<audio id="checkSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_4b3e4fdfd3.mp3?filename=notification-2-269292.mp3"></audio>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard.js/1.0.0/chessboard.min.js"></script>
 
 <script>
-const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x000000, 10, 200);
+var board = null
+var game = new Chess()
+var $status = document.getElementById('status')
+var $history = document.getElementById('history')
+var moveSound = document.getElementById("moveSound")
+var checkSound = document.getElementById("checkSound")
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-
-// Pointer Lock (FPS style)
-const controls = new THREE.PointerLockControls(camera, document.body);
-document.body.addEventListener('click', () => controls.lock());
-scene.add(controls.getObject());
-
-// Light
-const light = new THREE.PointLight(0xffffff, 2);
-light.position.set(10,10,10);
-scene.add(light);
-
-// ===== PLANET =====
-const planetGeo = new THREE.SphereGeometry(10,64,64);
-const planetMat = new THREE.MeshStandardMaterial({color:0x2244ff});
-const planet = new THREE.Mesh(planetGeo, planetMat);
-planet.position.set(0,0,-100);
-scene.add(planet);
-
-// ===== CITY =====
-for(let i=0;i<50;i++){
- const geo = new THREE.BoxGeometry(1,Math.random()*5+2,1);
- const mat = new THREE.MeshStandardMaterial({color:0x00ffff});
- const building = new THREE.Mesh(geo,mat);
- building.position.set(
-   (Math.random()-0.5)*15,
-   geo.parameters.height/2 - 10,
-   -100 + (Math.random()-0.5)*15
- );
- scene.add(building);
+function onDragStart (source, piece) {
+  if (game.game_over()) return false
+  if (piece.search(/^b/) !== -1) return false
 }
 
-// ===== ALIEN =====
-const alienGeo = new THREE.SphereGeometry(1,32,32);
-const alienMat = new THREE.MeshStandardMaterial({color:0x00ff00});
-const alien = new THREE.Mesh(alienGeo,alienMat);
-alien.position.set(5,0,-95);
-scene.add(alien);
+function onDrop (source, target) {
+  var move = game.move({
+    from: source,
+    to: target,
+    promotion: 'q'
+  })
 
-// ===== GALAXY SPIRAL =====
-const starGeo = new THREE.BufferGeometry();
-const starCount = 3000;
-const starVertices = [];
-for(let i=0;i<starCount;i++){
- const radius = Math.random()*200;
- const angle = radius * 0.1;
- starVertices.push(
-   Math.cos(angle)*radius,
-   (Math.random()-0.5)*50,
-   Math.sin(angle)*radius
- );
-}
-starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVertices,3));
-const starMat = new THREE.PointsMaterial({color:0xffffff});
-const galaxy = new THREE.Points(starGeo,starMat);
-scene.add(galaxy);
+  if (move === null) return 'snapback'
 
-// ===== MOVEMENT =====
-const keys = {};
-document.addEventListener("keydown", e=>keys[e.key.toLowerCase()] = true);
-document.addEventListener("keyup", e=>keys[e.key.toLowerCase()] = false);
-
-function move(){
- if(keys["w"]) controls.moveForward(0.5);
- if(keys["s"]) controls.moveForward(-0.5);
- if(keys["a"]) controls.moveRight(-0.5);
- if(keys["d"]) controls.moveRight(0.5);
+  moveSound.play()
+  updateStatus()
+  window.setTimeout(makeBestMove, 500)
 }
 
-// ===== COLLISION & LANDING =====
-function checkCollision(){
- const distance = controls.getObject().position.distanceTo(planet.position);
- if(distance < 12){
-   document.getElementById("info").innerHTML="🌍 Landing berhasil! Kamu di planet!";
- }
- if(distance < 8){
-   explodePlanet();
- }
+function onSnapEnd () {
+  board.position(game.fen())
 }
 
-// ===== EXPLOSION =====
-let exploded=false;
-function explodePlanet(){
- if(exploded) return;
- exploded=true;
- planet.material.color.set(0xff0000);
- for(let i=0;i<200;i++){
-   const debrisGeo = new THREE.SphereGeometry(0.2,8,8);
-   const debrisMat = new THREE.MeshBasicMaterial({color:0xff5500});
-   const debris = new THREE.Mesh(debrisGeo,debrisMat);
-   debris.position.copy(planet.position);
-   scene.add(debris);
+var config = {
+  draggable: true,
+  position: 'start',
+  onDragStart: onDragStart,
+  onDrop: onDrop,
+  onSnapEnd: onSnapEnd
+}
+board = Chessboard('board', config)
 
-   const dir = new THREE.Vector3(
-     (Math.random()-0.5)*2,
-     (Math.random()-0.5)*2,
-     (Math.random()-0.5)*2
-   );
-
-   function animateDebris(){
-     debris.position.add(dir);
-     requestAnimationFrame(animateDebris);
-   }
-   animateDebris();
- }
- scene.remove(planet);
+function updateStatus() {
+  var status = ''
+  if (game.in_checkmate()) {
+    status = 'Checkmate!'
+    checkSound.play()
+  } else if (game.in_draw()) {
+    status = 'Draw!'
+  } else {
+    status = game.turn() === 'w' ? 'Putih jalan' : 'Hitam jalan'
+    if (game.in_check()) {
+      status += ' - CHECK!'
+      checkSound.play()
+    }
+  }
+  $status.innerHTML = status
+  $history.innerHTML = game.history().join(" ")
 }
 
-// ===== ANIMATE =====
-function animate(){
- requestAnimationFrame(animate);
- move();
- checkCollision();
- alien.rotation.y += 0.02;
- renderer.render(scene,camera);
+function evaluateBoard(board) {
+  const values = {p:10, r:50, n:30, b:30, q:90, k:900}
+  let total = 0
+  board.forEach(row=>{
+    row.forEach(piece=>{
+      if(piece){
+        total += piece.color==='w' ? values[piece.type] : -values[piece.type]
+      }
+    })
+  })
+  return total
 }
-animate();
 
-// Resize
-window.addEventListener('resize',()=>{
- camera.aspect = window.innerWidth/window.innerHeight;
- camera.updateProjectionMatrix();
- renderer.setSize(window.innerWidth, window.innerHeight);
-});
+function minimax(depth, game, alpha, beta, isMaximising) {
+  if(depth===0) return evaluateBoard(game.board())
+
+  const moves = game.moves()
+  if(isMaximising){
+    let maxEval = -Infinity
+    for(let move of moves){
+      game.move(move)
+      let eval = minimax(depth-1, game, alpha, beta, false)
+      game.undo()
+      maxEval = Math.max(maxEval, eval)
+      alpha = Math.max(alpha, eval)
+      if(beta<=alpha) break
+    }
+    return maxEval
+  } else {
+    let minEval = Infinity
+    for(let move of moves){
+      game.move(move)
+      let eval = minimax(depth-1, game, alpha, beta, true)
+      game.undo()
+      minEval = Math.min(minEval, eval)
+      beta = Math.min(beta, eval)
+      if(beta<=alpha) break
+    }
+    return minEval
+  }
+}
+
+function makeBestMove(){
+  var depth = parseInt(document.getElementById("difficulty").value)
+  var bestMove = null
+  var bestValue = -Infinity
+  var moves = game.moves()
+
+  for(let move of moves){
+    game.move(move)
+    let boardValue = minimax(depth-1, game, -Infinity, Infinity, false)
+    game.undo()
+    if(boardValue >= bestValue){
+      bestValue = boardValue
+      bestMove = move
+    }
+  }
+  game.move(bestMove)
+  board.position(game.fen())
+  moveSound.play()
+  updateStatus()
+}
+
+function undoMove(){
+  game.undo()
+  game.undo()
+  board.position(game.fen())
+  updateStatus()
+}
+
+function restartGame(){
+  game.reset()
+  board.start()
+  updateStatus()
+}
+
+function flipBoard(){
+  board.flip()
+}
+
+function toggleDark(){
+  document.body.classList.toggle("dark-mode")
+}
+
+updateStatus()
 </script>
+
 </body>
 </html>
