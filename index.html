@@ -2,9 +2,8 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Grafik Fungsi 3D + Warna + Suara</title>
+<title>Math Synth 3D Surface 🎹🚀</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <style>
@@ -20,33 +19,25 @@ input,button{
     font-size:16px;
     margin:5px;
 }
-#chart{
-    background:white;
-    border-radius:10px;
-}
-#threeContainer{
+#container{
     width:100%;
-    height:400px;
+    height:500px;
 }
 </style>
 </head>
 <body>
 
-<h2>🚀 Grafik Fungsi 3D + Sound Synth 🎵</h2>
+<h2>🎹 Math Piano Synth + 3D Surface 🌊</h2>
 
-<input type="text" id="fungsi" value="sin(x)*x">
-<button onclick="gambar2D()">Tampilkan 2D</button>
-<button onclick="mainkanSuara()">Mainkan Suara</button>
-<button onclick="gambar3D()">Tampilkan 3D</button>
+<input type="text" id="fungsi" value="sin(x)*cos(y)">
+<button onclick="generateSurface()">Tampilkan Surface</button>
+<button onclick="playSound()">Mainkan Piano</button>
 
-<br><br>
-<canvas id="chart" width="600" height="300"></canvas>
-<div id="threeContainer"></div>
+<div id="container"></div>
 
 <script>
-let ctx = document.getElementById("chart").getContext("2d");
-let chart;
-let dataY = [];
+let scene, camera, renderer, mesh;
+let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 function parseFungsi(input){
     return input
@@ -58,112 +49,123 @@ function parseFungsi(input){
         .replace(/log/g,"Math.log");
 }
 
-function gambar2D(){
+// 🎹 Piano Scale (Do Re Mi)
+const scale = [
+261.63, // Do
+293.66, // Re
+329.63, // Mi
+349.23, // Fa
+392.00, // Sol
+440.00, // La
+493.88, // Si
+523.25  // Do tinggi
+];
+
+function getPianoNote(value){
+    let index = Math.floor(Math.abs(value*2)) % scale.length;
+    return scale[index];
+}
+
+function generateSurface(){
+
+    document.getElementById("container").innerHTML="";
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth/500, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(window.innerWidth,500);
+    document.getElementById("container").appendChild(renderer.domElement);
+
     let fungsiInput = parseFungsi(document.getElementById("fungsi").value);
 
-    let labels=[];
-    dataY=[];
+    let geometry = new THREE.PlaneGeometry(20,20,100,100);
+    let vertices = geometry.attributes.position;
 
-    for(let x=-10; x<=10; x+=0.2){
-        labels.push(x.toFixed(1));
+    for(let i=0;i<vertices.count;i++){
+        let x = vertices.getX(i);
+        let y = vertices.getY(i);
+
         try{
-            let y = eval(fungsiInput);
-            dataY.push(y);
+            let z = eval(fungsiInput);
+            vertices.setZ(i,z);
         }catch{
             alert("Fungsi error!");
             return;
         }
     }
 
-    if(chart) chart.destroy();
+    geometry.computeVertexNormals();
 
-    chart = new Chart(ctx,{
-        type:"line",
-        data:{
-            labels:labels,
-            datasets:[{
-                data:dataY,
-                borderWidth:2,
-                fill:false,
-                borderColor:"blue"
-            }]
-        },
-        options:{
-            animation:false,
-            plugins:{legend:{display:false}}
-        }
+    let material = new THREE.MeshStandardMaterial({
+        color:0x00ffcc,
+        wireframe:false,
+        side:THREE.DoubleSide
     });
+
+    mesh = new THREE.Mesh(geometry,material);
+    scene.add(mesh);
+
+    let light = new THREE.PointLight(0xffffff,1);
+    light.position.set(20,20,20);
+    scene.add(light);
+
+    camera.position.set(0,-30,20);
+    camera.lookAt(0,0,0);
+
+    function animate(){
+        requestAnimationFrame(animate);
+        mesh.rotation.z += 0.003;
+        renderer.render(scene,camera);
+    }
+    animate();
 }
 
-let audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+function playSound(){
 
-function mainkanSuara(){
-    if(!dataY.length){ alert("Tampilkan grafik dulu!"); return;}
+    let fungsiInput = parseFungsi(document.getElementById("fungsi").value);
 
     let osc = audioCtx.createOscillator();
+    let gainNode = audioCtx.createGain();
+    let panner = audioCtx.createStereoPanner();
+
     osc.type="sine";
-    osc.connect(audioCtx.destination);
+    osc.connect(panner);
+    panner.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
     osc.start();
 
-    let i=0;
+    let x=-10;
     let interval=setInterval(()=>{
-        if(i>=dataY.length){
+
+        if(x>10){
             clearInterval(interval);
             osc.stop();
             return;
         }
 
-        let pitch = 300 + dataY[i]*20;
-        pitch = Math.abs(pitch);
-
-        osc.frequency.setValueAtTime(pitch,audioCtx.currentTime);
-
-        // UBAH WARNA GRAFIK SESUAI NADA
-        let hue = pitch % 360;
-        chart.data.datasets[0].borderColor = "hsl("+hue+",100%,50%)";
-        chart.update();
-
-        i++;
-    },40);
-}
-
-let scene, camera, renderer, line;
-
-function gambar3D(){
-    document.getElementById("threeContainer").innerHTML="";
-
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth/400, 0.1, 1000);
-    renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth,400);
-    document.getElementById("threeContainer").appendChild(renderer.domElement);
-
-    let fungsiInput = parseFungsi(document.getElementById("fungsi").value);
-
-    let points=[];
-    for(let x=-10; x<=10; x+=0.2){
+        let y=0;
         try{
-            let y = eval(fungsiInput);
-            points.push(new THREE.Vector3(x,y,0));
+            y = eval(fungsiInput);
         }catch{
             alert("Fungsi error!");
             return;
         }
-    }
 
-    let geometry = new THREE.BufferGeometry().setFromPoints(points);
-    let material = new THREE.LineBasicMaterial({color:0x00ff00});
-    line = new THREE.Line(geometry, material);
-    scene.add(line);
+        let freq = getPianoNote(y);
+        osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
 
-    camera.position.z = 30;
+        // 🎧 Stereo kiri-kanan
+        let pan = x/10; // -1 kiri, +1 kanan
+        panner.pan.setValueAtTime(pan,audioCtx.currentTime);
 
-    function animate(){
-        requestAnimationFrame(animate);
-        line.rotation.y += 0.01;
-        renderer.render(scene,camera);
-    }
-    animate();
+        // 🌈 Warna berubah sesuai nada
+        let hue = freq % 360;
+        mesh.material.color.set(`hsl(${hue},100%,50%)`);
+
+        x+=0.3;
+
+    },80);
 }
 </script>
 
