@@ -1,108 +1,32 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Math Synth 3D Surface 🎹🚀</title>
-
+<title>Kartini 3D Piano Synth</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
 <style>
-body{
-    margin:0;
-    background:black;
-    color:white;
-    font-family:Arial;
-    text-align:center;
-}
-input,button{
-    padding:8px;
-    font-size:16px;
-    margin:5px;
-}
-#container{
-    width:100%;
-    height:500px;
-}
+body{margin:0;background:black;color:white;text-align:center;font-family:Arial}
+button{padding:10px;font-size:16px;margin:10px}
+#container{width:100%;height:500px}
 </style>
 </head>
 <body>
 
-<h2>🎹 Math Piano Synth + 3D Surface 🌊</h2>
+<h2>🎹 Ibu Kita Kartini - 3D Piano Mode 🌊</h2>
 
-<input type="text" id="fungsi" value="sin(x)*cos(y)">
 <button onclick="generateSurface()">Tampilkan Surface</button>
-<button onclick="playSound()">Mainkan Piano</button>
-function playSound(){
+<button onclick="playKartini()">Mainkan Lagu</button>
 
-    const melody = [
-        0,0,1,2,2,1,0,1,2,3,4,
-        4,3,2,3,4,5,4,3,2,1,0
-    ];
-
-    const scale=[261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25];
-
-    let osc=audioCtx.createOscillator();
-    let panner=audioCtx.createStereoPanner();
-    let gain=audioCtx.createGain();
-
-    osc.type="sine";
-    osc.connect(panner);
-    panner.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    osc.start();
-
-    let i=0;
-
-    let interval=setInterval(()=>{
-        if(i>=melody.length){
-            clearInterval(interval);
-            osc.stop();
-            return;
-        }
-
-        let freq=scale[melody[i]];
-        osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
-
-        panner.pan.setValueAtTime((i/melody.length)*2-1,audioCtx.currentTime);
-
-        i++;
-
-    },600); // 600ms = tempo lambat & jelas
-}
 <div id="container"></div>
 
 <script>
+
 let scene, camera, renderer, mesh;
 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-function parseFungsi(input){
-    return input
-        .replace(/sin/g,"Math.sin")
-        .replace(/cos/g,"Math.cos")
-        .replace(/tan/g,"Math.tan")
-        .replace(/sqrt/g,"Math.sqrt")
-        .replace(/abs/g,"Math.abs")
-        .replace(/log/g,"Math.log");
-}
-
-// 🎹 Piano Scale (Do Re Mi)
-const scale = [
-261.63, // Do
-293.66, // Re
-329.63, // Mi
-349.23, // Fa
-392.00, // Sol
-440.00, // La
-493.88, // Si
-523.25  // Do tinggi
-];
-
-function getPianoNote(value){
-    let index = Math.floor(Math.abs(value*2)) % scale.length;
-    return scale[index];
-}
-
+// ==========================
+// 3D SURFACE
+// ==========================
 function generateSurface(){
 
     document.getElementById("container").innerHTML="";
@@ -110,32 +34,23 @@ function generateSurface(){
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(60, window.innerWidth/500, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(window.innerWidth,500);
+    renderer.setSize(window.innerWidth, 500);
     document.getElementById("container").appendChild(renderer.domElement);
 
-    let fungsiInput = parseFungsi(document.getElementById("fungsi").value);
+    let geometry = new THREE.PlaneGeometry(20,20,120,120);
+    let pos = geometry.attributes.position;
 
-    let geometry = new THREE.PlaneGeometry(20,20,100,100);
-    let vertices = geometry.attributes.position;
-
-    for(let i=0;i<vertices.count;i++){
-        let x = vertices.getX(i);
-        let y = vertices.getY(i);
-
-        try{
-            let z = eval(fungsiInput);
-            vertices.setZ(i,z);
-        }catch{
-            alert("Fungsi error!");
-            return;
-        }
+    for(let i=0;i<pos.count;i++){
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = Math.sin(Math.sqrt(x*x+y*y));
+        pos.setZ(i,z);
     }
 
     geometry.computeVertexNormals();
 
     let material = new THREE.MeshStandardMaterial({
         color:0x00ffcc,
-        wireframe:false,
         side:THREE.DoubleSide
     });
 
@@ -146,66 +61,83 @@ function generateSurface(){
     light.position.set(20,20,20);
     scene.add(light);
 
-    camera.position.set(0,-30,20);
+    camera.position.set(0,-30,25);
     camera.lookAt(0,0,0);
 
     function animate(){
         requestAnimationFrame(animate);
-        mesh.rotation.z += 0.003;
+        mesh.rotation.z += 0.002;
         renderer.render(scene,camera);
     }
     animate();
 }
 
-function playSound(){
+// ==========================
+// LAGU KARTINI (JELAS & LAMBAT)
+// ==========================
+function playKartini(){
 
-    let fungsiInput = parseFungsi(document.getElementById("fungsi").value);
+    const scale = [
+        261.63, // Do
+        293.66, // Re
+        329.63, // Mi
+        349.23, // Fa
+        392.00, // Sol
+        440.00, // La
+        493.88, // Si
+        523.25  // Do tinggi
+    ];
+
+    // Bait awal "Ibu Kita Kartini"
+    const melody = [
+        0,0,1,2,2,1,0,1,
+        2,3,4,4,3,2,3,4,
+        5,4,3,2,1,0
+    ];
 
     let osc = audioCtx.createOscillator();
-    let gainNode = audioCtx.createGain();
+    let gain = audioCtx.createGain();
     let panner = audioCtx.createStereoPanner();
 
-    osc.type="sine";
+    osc.type = "sine";
+
     osc.connect(panner);
-    panner.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
+    panner.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    gain.gain.value = 0.3;
 
     osc.start();
 
-    let x=-10;
-    let interval=setInterval(()=>{
+    let i = 0;
 
-        if(x>10){
+    let interval = setInterval(()=>{
+
+        if(i >= melody.length){
             clearInterval(interval);
             osc.stop();
             return;
         }
 
-        let y=0;
-        try{
-            y = eval(fungsiInput);
-        }catch{
-            alert("Fungsi error!");
-            return;
+        let freq = scale[melody[i]];
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+        // stereo kiri-kanan
+        let pan = (i/melody.length)*2 - 1;
+        panner.pan.setValueAtTime(pan, audioCtx.currentTime);
+
+        // warna surface ikut nada
+        if(mesh){
+            let hue = freq % 360;
+            mesh.material.color.set(`hsl(${hue},100%,50%)`);
         }
 
-        let freq = getPianoNote(y);
-        osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
+        i++;
 
-        // 🎧 Stereo kiri-kanan
-        let pan = x/10; // -1 kiri, +1 kanan
-        panner.pan.setValueAtTime(pan,audioCtx.currentTime);
-
-        // 🌈 Warna berubah sesuai nada
-        let hue = freq % 360;
-        mesh.material.color.set(`hsl(${hue},100%,50%)`);
-
-        x+=0.3;
-
-    },80);
+    }, 600); // tempo pelan & jelas
 }
+
 </script>
 
 </body>
 </html>
-
