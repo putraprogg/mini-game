@@ -2,28 +2,36 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Math Synth 3D Stable</title>
+<title>Math Synth 2D + 3D Stable</title>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
 <style>
 body{margin:0;background:black;color:white;text-align:center;font-family:Arial}
 input,button{padding:8px;font-size:16px;margin:5px}
-#container{width:100%;height:500px}
+#container3d{width:100%;height:400px}
+canvas{background:white;border-radius:8px}
 </style>
 </head>
 <body>
 
-<h2>🎹 Math Surface Anti-Error 🚀</h2>
+<h2>🎹 Math Surface Anti-Error (2D + 3D) 🚀</h2>
 
 <input type="text" id="fungsi" value="sin(sqrt(x*x+y*y))">
-<button onclick="generateSurface()">Tampilkan Surface</button>
+<br>
+<button onclick="generate2D()">Tampilkan 2D</button>
+<button onclick="generate3D()">Tampilkan 3D</button>
 <button onclick="playSound()">Mainkan Piano</button>
 
-<div id="container"></div>
+<br><br>
+<canvas id="canvas2d" width="600" height="300"></canvas>
+<div id="container3d"></div>
 
 <script>
 let scene, camera, renderer, mesh;
 let audioCtx = new (window.AudioContext||window.webkitAudioContext)();
 
+// ================== PARSER ==================
 function parseFungsi(input){
     return input
         .replace(/sin/g,"Math.sin")
@@ -34,7 +42,7 @@ function parseFungsi(input){
         .replace(/log/g,"Math.log");
 }
 
-function safeEval(expr,x,y){
+function safeEval(expr,x,y=0){
     let z;
     try{
         z = eval(expr);
@@ -47,22 +55,41 @@ function safeEval(expr,x,y){
     }
 }
 
-const scale=[261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25];
+// ================== 2D GRAPH ==================
+function generate2D(){
 
-function getNote(v){
-    let i=Math.floor(Math.abs(v*2))%scale.length;
-    return scale[i];
+    let canvas=document.getElementById("canvas2d");
+    let ctx=canvas.getContext("2d");
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    let fungsi=parseFungsi(document.getElementById("fungsi").value);
+
+    ctx.beginPath();
+    ctx.strokeStyle="blue";
+
+    for(let px=0;px<canvas.width;px++){
+        let x=(px-300)/30;
+        let y=safeEval(fungsi,x,0);
+        let py=150 - y*20;
+
+        if(px===0) ctx.moveTo(px,py);
+        else ctx.lineTo(px,py);
+    }
+
+    ctx.stroke();
 }
 
-function generateSurface(){
+// ================== 3D SURFACE ==================
+function generate3D(){
 
-    document.getElementById("container").innerHTML="";
+    document.getElementById("container3d").innerHTML="";
 
     scene=new THREE.Scene();
-    camera=new THREE.PerspectiveCamera(60,window.innerWidth/500,0.1,1000);
+    camera=new THREE.PerspectiveCamera(60,window.innerWidth/400,0.1,1000);
     renderer=new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(window.innerWidth,500);
-    document.getElementById("container").appendChild(renderer.domElement);
+    renderer.setSize(window.innerWidth,400);
+    document.getElementById("container3d").appendChild(renderer.domElement);
 
     let fungsi=parseFungsi(document.getElementById("fungsi").value);
 
@@ -101,6 +128,14 @@ function generateSurface(){
     animate();
 }
 
+// ================== SOUND ==================
+const scale=[261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25];
+
+function getNote(v){
+    let i=Math.floor(Math.abs(v*2))%scale.length;
+    return scale[i];
+}
+
 function playSound(){
 
     let fungsi=parseFungsi(document.getElementById("fungsi").value);
@@ -113,6 +148,7 @@ function playSound(){
     panner.connect(gain);
     gain.connect(audioCtx.destination);
 
+    gain.gain.value=0.3;
     osc.start();
 
     let x=-10;
@@ -124,20 +160,20 @@ function playSound(){
             return;
         }
 
-        let y=0;
-        let z=safeEval(fungsi,x,y);
-
+        let z=safeEval(fungsi,x,0);
         let freq=getNote(z);
-        osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
 
+        osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
         panner.pan.setValueAtTime(x/10,audioCtx.currentTime);
 
-        let hue=freq%360;
-        mesh.material.color.set(`hsl(${hue},100%,50%)`);
+        if(mesh){
+            let hue=freq%360;
+            mesh.material.color.set(`hsl(${hue},100%,50%)`);
+        }
 
         x+=0.3;
 
-    },80);
+    },120);
 }
 </script>
 
