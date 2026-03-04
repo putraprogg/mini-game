@@ -2,62 +2,91 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Kartini 3D Piano Synth</title>
+<title>Math Synth 3D Stable</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 body{margin:0;background:black;color:white;text-align:center;font-family:Arial}
-button{padding:10px;font-size:16px;margin:10px}
+input,button{padding:8px;font-size:16px;margin:5px}
 #container{width:100%;height:500px}
 </style>
 </head>
 <body>
 
-<h2>🎹 Ibu Kita Kartini - 3D Piano Mode 🌊</h2>
+<h2>🎹 Math Surface Anti-Error 🚀</h2>
 
+<input type="text" id="fungsi" value="sin(sqrt(x*x+y*y))">
 <button onclick="generateSurface()">Tampilkan Surface</button>
-<button onclick="playKartini()">Mainkan Lagu</button>
+<button onclick="playSound()">Mainkan Piano</button>
 
 <div id="container"></div>
 
 <script>
-
 let scene, camera, renderer, mesh;
-let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioCtx = new (window.AudioContext||window.webkitAudioContext)();
 
-// ==========================
-// 3D SURFACE
-// ==========================
+function parseFungsi(input){
+    return input
+        .replace(/sin/g,"Math.sin")
+        .replace(/cos/g,"Math.cos")
+        .replace(/tan/g,"Math.tan")
+        .replace(/sqrt/g,"Math.sqrt")
+        .replace(/abs/g,"Math.abs")
+        .replace(/log/g,"Math.log");
+}
+
+function safeEval(expr,x,y){
+    let z;
+    try{
+        z = eval(expr);
+        if(!isFinite(z) || isNaN(z)) return 0;
+        if(z>50) z=50;
+        if(z<-50) z=-50;
+        return z;
+    }catch{
+        return 0;
+    }
+}
+
+const scale=[261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25];
+
+function getNote(v){
+    let i=Math.floor(Math.abs(v*2))%scale.length;
+    return scale[i];
+}
+
 function generateSurface(){
 
     document.getElementById("container").innerHTML="";
 
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth/500, 0.1, 1000);
-    renderer = new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(window.innerWidth, 500);
+    scene=new THREE.Scene();
+    camera=new THREE.PerspectiveCamera(60,window.innerWidth/500,0.1,1000);
+    renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(window.innerWidth,500);
     document.getElementById("container").appendChild(renderer.domElement);
 
-    let geometry = new THREE.PlaneGeometry(20,20,120,120);
-    let pos = geometry.attributes.position;
+    let fungsi=parseFungsi(document.getElementById("fungsi").value);
+
+    let geometry=new THREE.PlaneGeometry(20,20,120,120);
+    let pos=geometry.attributes.position;
 
     for(let i=0;i<pos.count;i++){
-        let x = pos.getX(i);
-        let y = pos.getY(i);
-        let z = Math.sin(Math.sqrt(x*x+y*y));
+        let x=pos.getX(i);
+        let y=pos.getY(i);
+        let z=safeEval(fungsi,x,y);
         pos.setZ(i,z);
     }
 
     geometry.computeVertexNormals();
 
-    let material = new THREE.MeshStandardMaterial({
+    let material=new THREE.MeshStandardMaterial({
         color:0x00ffcc,
         side:THREE.DoubleSide
     });
 
-    mesh = new THREE.Mesh(geometry,material);
+    mesh=new THREE.Mesh(geometry,material);
     scene.add(mesh);
 
-    let light = new THREE.PointLight(0xffffff,1);
+    let light=new THREE.PointLight(0xffffff,1);
     light.position.set(20,20,20);
     scene.add(light);
 
@@ -66,77 +95,50 @@ function generateSurface(){
 
     function animate(){
         requestAnimationFrame(animate);
-        mesh.rotation.z += 0.002;
+        mesh.rotation.z+=0.003;
         renderer.render(scene,camera);
     }
     animate();
 }
 
-// ==========================
-// LAGU KARTINI (JELAS & LAMBAT)
-// ==========================
-function playKartini(){
+function playSound(){
 
-    const scale = [
-        261.63, // Do
-        293.66, // Re
-        329.63, // Mi
-        349.23, // Fa
-        392.00, // Sol
-        440.00, // La
-        493.88, // Si
-        523.25  // Do tinggi
-    ];
+    let fungsi=parseFungsi(document.getElementById("fungsi").value);
 
-    // Bait awal "Ibu Kita Kartini"
-    const melody = [
-        0,0,1,2,2,1,0,1,
-        2,3,4,4,3,2,3,4,
-        5,4,3,2,1,0
-    ];
-
-    let osc = audioCtx.createOscillator();
-    let gain = audioCtx.createGain();
-    let panner = audioCtx.createStereoPanner();
-
-    osc.type = "sine";
+    let osc=audioCtx.createOscillator();
+    let panner=audioCtx.createStereoPanner();
+    let gain=audioCtx.createGain();
 
     osc.connect(panner);
     panner.connect(gain);
     gain.connect(audioCtx.destination);
 
-    gain.gain.value = 0.3;
-
     osc.start();
 
-    let i = 0;
+    let x=-10;
 
-    let interval = setInterval(()=>{
-
-        if(i >= melody.length){
+    let interval=setInterval(()=>{
+        if(x>10){
             clearInterval(interval);
             osc.stop();
             return;
         }
 
-        let freq = scale[melody[i]];
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        let y=0;
+        let z=safeEval(fungsi,x,y);
 
-        // stereo kiri-kanan
-        let pan = (i/melody.length)*2 - 1;
-        panner.pan.setValueAtTime(pan, audioCtx.currentTime);
+        let freq=getNote(z);
+        osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
 
-        // warna surface ikut nada
-        if(mesh){
-            let hue = freq % 360;
-            mesh.material.color.set(`hsl(${hue},100%,50%)`);
-        }
+        panner.pan.setValueAtTime(x/10,audioCtx.currentTime);
 
-        i++;
+        let hue=freq%360;
+        mesh.material.color.set(`hsl(${hue},100%,50%)`);
 
-    }, 600); // tempo pelan & jelas
+        x+=0.3;
+
+    },80);
 }
-
 </script>
 
 </body>
