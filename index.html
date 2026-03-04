@@ -32,7 +32,44 @@ input,button{
 <input type="text" id="fungsi" value="sin(x)*cos(y)">
 <button onclick="generateSurface()">Tampilkan Surface</button>
 <button onclick="playSound()">Mainkan Piano</button>
+function playSound(){
 
+    const melody = [
+        0,0,1,2,2,1,0,1,2,3,4,
+        4,3,2,3,4,5,4,3,2,1,0
+    ];
+
+    const scale=[261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25];
+
+    let osc=audioCtx.createOscillator();
+    let panner=audioCtx.createStereoPanner();
+    let gain=audioCtx.createGain();
+
+    osc.type="sine";
+    osc.connect(panner);
+    panner.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start();
+
+    let i=0;
+
+    let interval=setInterval(()=>{
+        if(i>=melody.length){
+            clearInterval(interval);
+            osc.stop();
+            return;
+        }
+
+        let freq=scale[melody[i]];
+        osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
+
+        panner.pan.setValueAtTime((i/melody.length)*2-1,audioCtx.currentTime);
+
+        i++;
+
+    },600); // 600ms = tempo lambat & jelas
+}
 <div id="container"></div>
 
 <script>
@@ -171,3 +208,4 @@ function playSound(){
 
 </body>
 </html>
+
