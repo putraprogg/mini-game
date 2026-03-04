@@ -2,110 +2,168 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Diagram Fungsi + Suara</title>
+<title>Grafik Fungsi 3D + Warna + Suara</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
 <style>
-body {
-    text-align: center;
-    font-family: Arial, sans-serif;
-    background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
-    color: white;
+body{
+    margin:0;
+    background:black;
+    color:white;
+    font-family:Arial;
+    text-align:center;
 }
-input, button {
-    padding: 8px;
-    font-size: 16px;
-    margin: 5px;
+input,button{
+    padding:8px;
+    font-size:16px;
+    margin:5px;
 }
-canvas {
-    background: white;
-    border-radius: 10px;
+#chart{
+    background:white;
+    border-radius:10px;
+}
+#threeContainer{
+    width:100%;
+    height:400px;
 }
 </style>
 </head>
 <body>
 
-<h2>📈 Diagram Fungsi Matematika + Suara 🎵</h2>
-<p>Masukkan fungsi (contoh: sin(x), x*x, cos(x)*x)</p>
+<h2>🚀 Grafik Fungsi 3D + Sound Synth 🎵</h2>
 
-<input type="text" id="fungsi" value="sin(x)">
-<button onclick="gambar()">Tampilkan Grafik</button>
+<input type="text" id="fungsi" value="sin(x)*x">
+<button onclick="gambar2D()">Tampilkan 2D</button>
 <button onclick="mainkanSuara()">Mainkan Suara</button>
+<button onclick="gambar3D()">Tampilkan 3D</button>
 
 <br><br>
-<canvas id="chart" width="600" height="400"></canvas>
+<canvas id="chart" width="600" height="300"></canvas>
+<div id="threeContainer"></div>
 
 <script>
-let ctx = document.getElementById('chart').getContext('2d');
+let ctx = document.getElementById("chart").getContext("2d");
 let chart;
 let dataY = [];
 
-function gambar() {
-    let fungsiInput = document.getElementById("fungsi").value;
+function parseFungsi(input){
+    return input
+        .replace(/sin/g,"Math.sin")
+        .replace(/cos/g,"Math.cos")
+        .replace(/tan/g,"Math.tan")
+        .replace(/sqrt/g,"Math.sqrt")
+        .replace(/abs/g,"Math.abs")
+        .replace(/log/g,"Math.log");
+}
 
-    let labels = [];
-    dataY = [];
+function gambar2D(){
+    let fungsiInput = parseFungsi(document.getElementById("fungsi").value);
 
-    for (let x = -10; x <= 10; x += 0.2) {
+    let labels=[];
+    dataY=[];
+
+    for(let x=-10; x<=10; x+=0.2){
         labels.push(x.toFixed(1));
-        try {
+        try{
             let y = eval(fungsiInput);
             dataY.push(y);
-        } catch {
-            alert("Fungsi tidak valid!");
+        }catch{
+            alert("Fungsi error!");
             return;
         }
     }
 
-    if (chart) chart.destroy();
+    if(chart) chart.destroy();
 
-    chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'f(x)',
-                data: dataY,
-                borderColor: 'blue',
-                borderWidth: 2,
-                fill: false,
-                tension: 0.1
+    chart = new Chart(ctx,{
+        type:"line",
+        data:{
+            labels:labels,
+            datasets:[{
+                data:dataY,
+                borderWidth:2,
+                fill:false,
+                borderColor:"blue"
             }]
         },
-        options: {
-            scales: {
-                x: { display: true },
-                y: { display: true }
-            }
+        options:{
+            animation:false,
+            plugins:{legend:{display:false}}
         }
     });
 }
 
-let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-let oscillator;
+let audioCtx = new (window.AudioContext||window.webkitAudioContext)();
 
-function mainkanSuara() {
-    if (!dataY.length) {
-        alert("Tampilkan grafik dulu!");
-        return;
-    }
+function mainkanSuara(){
+    if(!dataY.length){ alert("Tampilkan grafik dulu!"); return;}
 
-    let i = 0;
-    oscillator = audioCtx.createOscillator();
-    oscillator.type = "sine";
-    oscillator.connect(audioCtx.destination);
-    oscillator.start();
+    let osc = audioCtx.createOscillator();
+    osc.type="sine";
+    osc.connect(audioCtx.destination);
+    osc.start();
 
-    let interval = setInterval(() => {
-        if (i >= dataY.length) {
+    let i=0;
+    let interval=setInterval(()=>{
+        if(i>=dataY.length){
             clearInterval(interval);
-            oscillator.stop();
+            osc.stop();
             return;
         }
 
-        let pitch = 300 + (dataY[i] * 20);
-        oscillator.frequency.setValueAtTime(Math.abs(pitch), audioCtx.currentTime);
+        let pitch = 300 + dataY[i]*20;
+        pitch = Math.abs(pitch);
+
+        osc.frequency.setValueAtTime(pitch,audioCtx.currentTime);
+
+        // UBAH WARNA GRAFIK SESUAI NADA
+        let hue = pitch % 360;
+        chart.data.datasets[0].borderColor = "hsl("+hue+",100%,50%)";
+        chart.update();
+
         i++;
-    }, 50);
+    },40);
+}
+
+let scene, camera, renderer, line;
+
+function gambar3D(){
+    document.getElementById("threeContainer").innerHTML="";
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/400, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth,400);
+    document.getElementById("threeContainer").appendChild(renderer.domElement);
+
+    let fungsiInput = parseFungsi(document.getElementById("fungsi").value);
+
+    let points=[];
+    for(let x=-10; x<=10; x+=0.2){
+        try{
+            let y = eval(fungsiInput);
+            points.push(new THREE.Vector3(x,y,0));
+        }catch{
+            alert("Fungsi error!");
+            return;
+        }
+    }
+
+    let geometry = new THREE.BufferGeometry().setFromPoints(points);
+    let material = new THREE.LineBasicMaterial({color:0x00ff00});
+    line = new THREE.Line(geometry, material);
+    scene.add(line);
+
+    camera.position.z = 30;
+
+    function animate(){
+        requestAnimationFrame(animate);
+        line.rotation.y += 0.01;
+        renderer.render(scene,camera);
+    }
+    animate();
 }
 </script>
 
