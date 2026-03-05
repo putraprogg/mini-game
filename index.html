@@ -1,181 +1,356 @@
+```html
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Math Synth 2D + 3D Stable</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Lab</title>
 
 <style>
-body{margin:0;background:black;color:white;text-align:center;font-family:Arial}
-input,button{padding:8px;font-size:16px;margin:5px}
-#container3d{width:100%;height:400px}
-canvas{background:white;border-radius:8px}
+
+body{
+margin:0;
+font-family:Segoe UI, sans-serif;
+background:#0b0b12;
+color:white;
+overflow-x:hidden;
+}
+
+nav{
+display:flex;
+justify-content:space-between;
+padding:15px 40px;
+background:rgba(255,255,255,0.05);
+backdrop-filter:blur(10px);
+position:sticky;
+top:0;
+}
+
+nav h1{
+color:#00eaff;
+}
+
+nav a{
+margin:0 10px;
+text-decoration:none;
+color:white;
+}
+
+section{
+padding:60px 40px;
+}
+
+.hero{
+height:80vh;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+text-align:center;
+}
+
+button{
+padding:10px 20px;
+border:none;
+border-radius:8px;
+background:#00eaff;
+color:black;
+cursor:pointer;
+font-weight:bold;
+}
+
+.piano{
+display:flex;
+margin-top:30px;
+}
+
+.key{
+width:50px;
+height:200px;
+border:1px solid black;
+background:white;
+position:relative;
+cursor:pointer;
+}
+
+.black{
+background:black;
+width:30px;
+height:120px;
+position:absolute;
+margin-left:-15px;
+z-index:2;
+}
+
+.sequencer{
+display:grid;
+grid-template-columns:repeat(16,40px);
+gap:5px;
+margin-top:20px;
+}
+
+.step{
+width:40px;
+height:40px;
+background:#222;
+cursor:pointer;
+}
+
+.active{
+background:#00eaff;
+}
+
+.controls{
+margin-top:20px;
+}
+
+canvas{
+width:100%;
+height:300px;
+background:black;
+margin-top:20px;
+}
+
+.card{
+background:rgba(255,255,255,0.05);
+padding:20px;
+border-radius:12px;
+margin-top:30px;
+}
+
 </style>
 </head>
+
 <body>
 
-<h2>🎹 Math Surface Anti-Error (2D + 3D) 🚀</h2>
+<nav>
+<h1>MusicLab</h1>
+<div>
+<a href="#home">Home</a>
+<a href="#synth">Music Lab</a>
+<a href="#beat">Beat Creator</a>
+<a href="#visual">Visualizer</a>
+</div>
+</nav>
 
-<input type="text" id="fungsi" value="sin(sqrt(x*x+y*y))">
-<br>
-<button onclick="generate2D()">Tampilkan 2D</button>
-<button onclick="generate3D()">Tampilkan 3D</button>
-<button onclick="playSound()">Mainkan Piano</button>
+<section class="hero" id="home">
+<h2>Interactive Music Experience</h2>
+<p>Create beats, play synth, and visualize music.</p>
+<button onclick="document.getElementById('synth').scrollIntoView()">Start</button>
+</section>
 
-<br><br>
-<canvas id="canvas2d" width="600" height="300"></canvas>
-<div id="container3d"></div>
+<section id="synth">
+<h2>Virtual Synth</h2>
+<div class="piano" id="piano"></div>
+</section>
+
+<section id="beat">
+<h2>Beat Creator</h2>
+
+<div class="sequencer" id="seq"></div>
+
+<div class="controls">
+<button onclick="playBeat()">Play</button>
+<button onclick="stopBeat()">Stop</button>
+<label>BPM</label>
+<input type="range" id="bpm" min="60" max="180" value="120">
+</div>
+
+</section>
+
+<section id="visual">
+<h2>Music Visualizer</h2>
+
+<input type="file" id="upload">
+
+<canvas id="visualizer"></canvas>
+
+</section>
 
 <script>
-let scene, camera, renderer, mesh;
-let audioCtx = new (window.AudioContext||window.webkitAudioContext)();
 
-// ================== PARSER ==================
-function parseFungsi(input){
-    return input
-        .replace(/sin/g,"Math.sin")
-        .replace(/cos/g,"Math.cos")
-        .replace(/tan/g,"Math.tan")
-        .replace(/sqrt/g,"Math.sqrt")
-        .replace(/abs/g,"Math.abs")
-        .replace(/log/g,"Math.log");
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+/////////////////////////
+// SYNTH
+/////////////////////////
+
+const notes = [
+261.63,293.66,329.63,349.23,
+392.00,440.00,493.88
+];
+
+const piano = document.getElementById("piano");
+
+notes.forEach(freq=>{
+let key=document.createElement("div");
+key.className="key";
+
+key.onclick=()=>playNote(freq);
+
+piano.appendChild(key);
+});
+
+function playNote(freq){
+
+let osc = audioCtx.createOscillator();
+let gain = audioCtx.createGain();
+
+osc.frequency.value=freq;
+
+osc.connect(gain);
+gain.connect(audioCtx.destination);
+
+osc.start();
+
+gain.gain.setValueAtTime(1,audioCtx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+1);
+
+osc.stop(audioCtx.currentTime+1);
+
 }
 
-function safeEval(expr,x,y=0){
-    let z;
-    try{
-        z = eval(expr);
-        if(!isFinite(z) || isNaN(z)) return 0;
-        if(z>50) z=50;
-        if(z<-50) z=-50;
-        return z;
-    }catch{
-        return 0;
-    }
+/////////////////////////
+// SEQUENCER
+/////////////////////////
+
+const seq = document.getElementById("seq");
+
+let pattern = new Array(16).fill(false);
+
+for(let i=0;i<16;i++){
+
+let step=document.createElement("div");
+step.className="step";
+
+step.onclick=()=>{
+pattern[i]=!pattern[i];
+step.classList.toggle("active");
 }
 
-// ================== 2D GRAPH ==================
-function generate2D(){
+seq.appendChild(step);
 
-    let canvas=document.getElementById("canvas2d");
-    let ctx=canvas.getContext("2d");
-
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    let fungsi=parseFungsi(document.getElementById("fungsi").value);
-
-    ctx.beginPath();
-    ctx.strokeStyle="blue";
-
-    for(let px=0;px<canvas.width;px++){
-        let x=(px-300)/30;
-        let y=safeEval(fungsi,x,0);
-        let py=150 - y*20;
-
-        if(px===0) ctx.moveTo(px,py);
-        else ctx.lineTo(px,py);
-    }
-
-    ctx.stroke();
 }
 
-// ================== 3D SURFACE ==================
-function generate3D(){
+let interval;
+let stepIndex=0;
 
-    document.getElementById("container3d").innerHTML="";
+function playBeat(){
 
-    scene=new THREE.Scene();
-    camera=new THREE.PerspectiveCamera(60,window.innerWidth/400,0.1,1000);
-    renderer=new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(window.innerWidth,400);
-    document.getElementById("container3d").appendChild(renderer.domElement);
+let bpm=document.getElementById("bpm").value;
 
-    let fungsi=parseFungsi(document.getElementById("fungsi").value);
+let speed=60000/bpm/4;
 
-    let geometry=new THREE.PlaneGeometry(20,20,120,120);
-    let pos=geometry.attributes.position;
+interval=setInterval(()=>{
 
-    for(let i=0;i<pos.count;i++){
-        let x=pos.getX(i);
-        let y=pos.getY(i);
-        let z=safeEval(fungsi,x,y);
-        pos.setZ(i,z);
-    }
+if(pattern[stepIndex]){
 
-    geometry.computeVertexNormals();
+playKick();
 
-    let material=new THREE.MeshStandardMaterial({
-        color:0x00ffcc,
-        side:THREE.DoubleSide
-    });
-
-    mesh=new THREE.Mesh(geometry,material);
-    scene.add(mesh);
-
-    let light=new THREE.PointLight(0xffffff,1);
-    light.position.set(20,20,20);
-    scene.add(light);
-
-    camera.position.set(0,-30,25);
-    camera.lookAt(0,0,0);
-
-    function animate(){
-        requestAnimationFrame(animate);
-        mesh.rotation.z+=0.003;
-        renderer.render(scene,camera);
-    }
-    animate();
 }
 
-// ================== SOUND ==================
-const scale=[261.63,293.66,329.63,349.23,392.00,440.00,493.88,523.25];
+stepIndex=(stepIndex+1)%16;
 
-function getNote(v){
-    let i=Math.floor(Math.abs(v*2))%scale.length;
-    return scale[i];
+},speed);
+
 }
 
-function playSound(){
+function stopBeat(){
 
-    let fungsi=parseFungsi(document.getElementById("fungsi").value);
+clearInterval(interval);
 
-    let osc=audioCtx.createOscillator();
-    let panner=audioCtx.createStereoPanner();
-    let gain=audioCtx.createGain();
-
-    osc.connect(panner);
-    panner.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    gain.gain.value=0.3;
-    osc.start();
-
-    let x=-10;
-
-    let interval=setInterval(()=>{
-        if(x>10){
-            clearInterval(interval);
-            osc.stop();
-            return;
-        }
-
-        let z=safeEval(fungsi,x,0);
-        let freq=getNote(z);
-
-        osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
-        panner.pan.setValueAtTime(x/10,audioCtx.currentTime);
-
-        if(mesh){
-            let hue=freq%360;
-            mesh.material.color.set(`hsl(${hue},100%,50%)`);
-        }
-
-        x+=0.3;
-
-    },120);
 }
+
+function playKick(){
+
+let osc=audioCtx.createOscillator();
+let gain=audioCtx.createGain();
+
+osc.frequency.setValueAtTime(150,audioCtx.currentTime);
+osc.frequency.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.5);
+
+gain.gain.setValueAtTime(1,audioCtx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.5);
+
+osc.connect(gain);
+gain.connect(audioCtx.destination);
+
+osc.start();
+osc.stop(audioCtx.currentTime+0.5);
+
+}
+
+/////////////////////////
+// VISUALIZER
+/////////////////////////
+
+const canvas=document.getElementById("visualizer");
+const ctx=canvas.getContext("2d");
+
+canvas.width=window.innerWidth;
+
+let analyser=audioCtx.createAnalyser();
+analyser.fftSize=256;
+
+let dataArray=new Uint8Array(analyser.frequencyBinCount);
+
+function draw(){
+
+requestAnimationFrame(draw);
+
+analyser.getByteFrequencyData(dataArray);
+
+ctx.fillStyle="black";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+let barWidth=canvas.width/dataArray.length;
+
+for(let i=0;i<dataArray.length;i++){
+
+let barHeight=dataArray[i];
+
+ctx.fillStyle="cyan";
+
+ctx.fillRect(i*barWidth,canvas.height-barHeight,barWidth,barHeight);
+
+}
+
+}
+
+draw();
+
+/////////////////////////
+// MUSIC UPLOAD
+/////////////////////////
+
+document.getElementById("upload").addEventListener("change",function(){
+
+let file=this.files[0];
+
+let reader=new FileReader();
+
+reader.onload=function(){
+
+audioCtx.decodeAudioData(reader.result,function(buffer){
+
+let source=audioCtx.createBufferSource();
+source.buffer=buffer;
+
+source.connect(analyser);
+analyser.connect(audioCtx.destination);
+
+source.start();
+
+});
+
+}
+
+reader.readAsArrayBuffer(file);
+
+});
+
 </script>
 
 </body>
 </html>
+```
