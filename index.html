@@ -3,31 +3,32 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Gravity Sandbox</title>
+<title>Formula Visualizer</title>
 
 <style>
 
 body{
 margin:0;
-background:black;
+background:#0f0f18;
 color:white;
 font-family:Arial;
-overflow:hidden;
+text-align:center;
 }
 
-#ui{
-position:fixed;
-top:10px;
-left:10px;
-background:rgba(0,0,0,0.5);
-padding:10px;
-border-radius:8px;
+#controls{
+padding:15px;
+background:#111;
 }
 
-button{
-padding:6px 10px;
-margin:3px;
-cursor:pointer;
+input{
+width:300px;
+padding:6px;
+}
+
+canvas{
+background:black;
+display:block;
+margin:auto;
 }
 
 </style>
@@ -36,139 +37,75 @@ cursor:pointer;
 
 <body>
 
-<div id="ui">
-Gravity: <input type="range" id="gravity" min="0.01" max="2" step="0.01" value="0.2"><br>
-<button onclick="clearPlanets()">Clear</button>
+<div id="controls">
+
+Formula f(x,y):
+
+<input id="formula" value="sin(x)+cos(y)">
+
+<button onclick="draw()">Draw</button>
+
+Zoom
+<input type="range" id="zoom" min="10" max="100" value="40">
+
 </div>
 
-<canvas id="canvas"></canvas>
+<canvas id="canvas" width="800" height="500"></canvas>
 
 <script>
 
 const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d");
 
-canvas.width=window.innerWidth;
-canvas.height=window.innerHeight;
-
-let planets=[];
-
-class Planet{
-
-constructor(x,y){
-
-this.x=x;
-this.y=y;
-
-this.vx=(Math.random()-0.5)*2;
-this.vy=(Math.random()-0.5)*2;
-
-this.mass=Math.random()*5+2;
-
-this.color="hsl("+Math.random()*360+",80%,60%)";
-
-this.trail=[];
-
-}
-
-}
-
-canvas.onclick=function(e){
-
-planets.push(new Planet(e.clientX,e.clientY));
-
-}
-
-function clearPlanets(){
-planets=[];
-}
-
-function update(){
-
-let G=document.getElementById("gravity").value;
-
-for(let i=0;i<planets.length;i++){
-
-let p1=planets[i];
-
-for(let j=i+1;j<planets.length;j++){
-
-let p2=planets[j];
-
-let dx=p2.x-p1.x;
-let dy=p2.y-p1.y;
-
-let dist=Math.sqrt(dx*dx+dy*dy);
-
-let force=G*p1.mass*p2.mass/(dist*dist+1);
-
-let ax=force*dx/dist;
-let ay=force*dy/dist;
-
-p1.vx+=ax/p1.mass;
-p1.vy+=ay/p1.mass;
-
-p2.vx-=ax/p2.mass;
-p2.vy-=ay/p2.mass;
-
-}
-
-}
-
-planets.forEach(p=>{
-
-p.x+=p.vx;
-p.y+=p.vy;
-
-p.trail.push({x:p.x,y:p.y});
-
-if(p.trail.length>50)p.trail.shift();
-
-});
-
-}
-
 function draw(){
 
-ctx.fillStyle="rgba(0,0,0,0.2)";
-ctx.fillRect(0,0,canvas.width,canvas.height);
+let formula=document.getElementById("formula").value;
 
-planets.forEach(p=>{
+let zoom=document.getElementById("zoom").value;
 
-ctx.strokeStyle=p.color;
+let f;
 
-ctx.beginPath();
+try{
+f=new Function("x","y","return "+formula);
+}catch(e){
+alert("Invalid formula");
+return;
+}
 
-for(let i=0;i<p.trail.length;i++){
+let w=canvas.width;
+let h=canvas.height;
 
-let t=p.trail[i];
+ctx.fillStyle="black";
+ctx.fillRect(0,0,w,h);
 
-ctx.lineTo(t.x,t.y);
+for(let px=0;px<w;px++){
+
+for(let py=0;py<h;py++){
+
+let x=(px-w/2)/zoom;
+let y=(py-h/2)/zoom;
+
+let z;
+
+try{
+z=f(x,y);
+}catch{
+continue;
+}
+
+let color=(Math.sin(z)+1)*120;
+
+ctx.fillStyle="hsl("+color+",100%,50%)";
+
+ctx.fillRect(px,py,1,1);
 
 }
 
-ctx.stroke();
-
-ctx.fillStyle=p.color;
-
-ctx.beginPath();
-ctx.arc(p.x,p.y,p.mass*2,0,Math.PI*2);
-ctx.fill();
-
-});
+}
 
 }
 
-function loop(){
-
-update();
 draw();
-
-requestAnimationFrame(loop);
-
-}
-
-loop();
 
 </script>
 
