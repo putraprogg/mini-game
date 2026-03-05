@@ -3,34 +3,31 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Interactive Pattern Generator</title>
+<title>Gravity Sandbox</title>
 
 <style>
 
 body{
 margin:0;
-background:#0f0f18;
+background:black;
 color:white;
 font-family:Arial;
-text-align:center;
+overflow:hidden;
 }
 
-h1{
-margin-top:20px;
+#ui{
+position:fixed;
+top:10px;
+left:10px;
+background:rgba(0,0,0,0.5);
+padding:10px;
+border-radius:8px;
 }
 
-.controls{
-margin:20px;
-}
-
-label{
-display:block;
-margin:10px;
-}
-
-canvas{
-background:black;
-border:1px solid #333;
+button{
+padding:6px 10px;
+margin:3px;
+cursor:pointer;
 }
 
 </style>
@@ -39,63 +36,139 @@ border:1px solid #333;
 
 <body>
 
-<h1>Interactive Pattern Generator</h1>
-
-<div class="controls">
-
-<label>
-Density
-<input type="range" id="density" min="100" max="5000" value="1000">
-</label>
-
-<label>
-Chaos
-<input type="range" id="chaos" min="1" max="20" value="5">
-</label>
-
-<label>
-Rotation
-<input type="range" id="rotation" min="0" max="360" value="0">
-</label>
-
-<button onclick="draw()">Generate</button>
-
+<div id="ui">
+Gravity: <input type="range" id="gravity" min="0.01" max="2" step="0.01" value="0.2"><br>
+<button onclick="clearPlanets()">Clear</button>
 </div>
 
-<canvas id="canvas" width="800" height="500"></canvas>
+<canvas id="canvas"></canvas>
 
 <script>
 
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+let planets=[];
+
+class Planet{
+
+constructor(x,y){
+
+this.x=x;
+this.y=y;
+
+this.vx=(Math.random()-0.5)*2;
+this.vy=(Math.random()-0.5)*2;
+
+this.mass=Math.random()*5+2;
+
+this.color="hsl("+Math.random()*360+",80%,60%)";
+
+this.trail=[];
+
+}
+
+}
+
+canvas.onclick=function(e){
+
+planets.push(new Planet(e.clientX,e.clientY));
+
+}
+
+function clearPlanets(){
+planets=[];
+}
+
+function update(){
+
+let G=document.getElementById("gravity").value;
+
+for(let i=0;i<planets.length;i++){
+
+let p1=planets[i];
+
+for(let j=i+1;j<planets.length;j++){
+
+let p2=planets[j];
+
+let dx=p2.x-p1.x;
+let dy=p2.y-p1.y;
+
+let dist=Math.sqrt(dx*dx+dy*dy);
+
+let force=G*p1.mass*p2.mass/(dist*dist+1);
+
+let ax=force*dx/dist;
+let ay=force*dy/dist;
+
+p1.vx+=ax/p1.mass;
+p1.vy+=ay/p1.mass;
+
+p2.vx-=ax/p2.mass;
+p2.vy-=ay/p2.mass;
+
+}
+
+}
+
+planets.forEach(p=>{
+
+p.x+=p.vx;
+p.y+=p.vy;
+
+p.trail.push({x:p.x,y:p.y});
+
+if(p.trail.length>50)p.trail.shift();
+
+});
+
+}
 
 function draw(){
 
-let density = document.getElementById("density").value;
-let chaos = document.getElementById("chaos").value;
-let rotation = document.getElementById("rotation").value * Math.PI / 180;
-
-ctx.fillStyle="black";
+ctx.fillStyle="rgba(0,0,0,0.2)";
 ctx.fillRect(0,0,canvas.width,canvas.height);
 
-for(let i=0;i<density;i++){
+planets.forEach(p=>{
 
-let angle = i * chaos * 0.01;
+ctx.strokeStyle=p.color;
 
-let r = i * 0.05;
+ctx.beginPath();
 
-let x = canvas.width/2 + Math.cos(angle + rotation) * r;
-let y = canvas.height/2 + Math.sin(angle + rotation) * r;
+for(let i=0;i<p.trail.length;i++){
 
-ctx.fillStyle = "hsl("+i%360+",100%,60%)";
+let t=p.trail[i];
 
-ctx.fillRect(x,y,2,2);
-
-}
+ctx.lineTo(t.x,t.y);
 
 }
 
+ctx.stroke();
+
+ctx.fillStyle=p.color;
+
+ctx.beginPath();
+ctx.arc(p.x,p.y,p.mass*2,0,Math.PI*2);
+ctx.fill();
+
+});
+
+}
+
+function loop(){
+
+update();
 draw();
+
+requestAnimationFrame(loop);
+
+}
+
+loop();
 
 </script>
 
