@@ -3,84 +3,34 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Music Lab Studio</title>
+<title>Interactive Pattern Generator</title>
 
 <style>
 
 body{
 margin:0;
-background:#0b0b12;
+background:#0f0f18;
 color:white;
 font-family:Arial;
-}
-
-header{
-padding:20px;
 text-align:center;
-background:#111;
-font-size:24px;
 }
 
-.container{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:20px;
-padding:20px;
+h1{
+margin-top:20px;
 }
 
-.panel{
-background:#151520;
-padding:20px;
-border-radius:10px;
+.controls{
+margin:20px;
 }
 
-h2{
-margin-top:0;
-color:#00eaff;
-}
-
-/* piano */
-
-.piano{
-display:flex;
-}
-
-.key{
-width:40px;
-height:160px;
-background:white;
-border:1px solid black;
-cursor:pointer;
-}
-
-.key:active{
-background:#00eaff;
-}
-
-/* sequencer */
-
-.grid{
-display:grid;
-grid-template-columns:repeat(16,25px);
-gap:4px;
-margin-top:10px;
-}
-
-.cell{
-width:25px;
-height:25px;
-background:#333;
-cursor:pointer;
-}
-
-.cell.active{
-background:#00eaff;
+label{
+display:block;
+margin:10px;
 }
 
 canvas{
-width:100%;
-height:200px;
 background:black;
+border:1px solid #333;
 }
 
 </style>
@@ -89,232 +39,57 @@ background:black;
 
 <body>
 
-<header>
-🎧 Music Lab Studio
-</header>
+<h1>Interactive Pattern Generator</h1>
 
-<div class="container">
+<div class="controls">
 
-<div class="panel">
-<h2>🎹 Synth Piano</h2>
-<div class="piano" id="piano"></div>
-</div>
+<label>
+Density
+<input type="range" id="density" min="100" max="5000" value="1000">
+</label>
 
-<div class="panel">
-<h2>🥁 Drum Machine</h2>
+<label>
+Chaos
+<input type="range" id="chaos" min="1" max="20" value="5">
+</label>
 
-Kick
-<div class="grid" id="kick"></div>
+<label>
+Rotation
+<input type="range" id="rotation" min="0" max="360" value="0">
+</label>
 
-Snare
-<div class="grid" id="snare"></div>
-
-HiHat
-<div class="grid" id="hihat"></div>
-
-<br>
-
-BPM
-<input type="range" id="bpm" min="60" max="160" value="120">
-
-<br><br>
-
-<button onclick="play()">Play</button>
-<button onclick="stop()">Stop</button>
+<button onclick="draw()">Generate</button>
 
 </div>
 
-<div class="panel">
-<h2>📊 Audio Visualizer</h2>
-<canvas id="visual"></canvas>
-</div>
-
-</div>
+<canvas id="canvas" width="800" height="500"></canvas>
 
 <script>
 
-const ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-const analyser = ctx.createAnalyser();
-analyser.connect(ctx.destination);
-
-////////////////////////
-// PIANO
-////////////////////////
-
-const notes=[
-261,293,329,349,392,440,493,
-523,587,659,698,784,880,987
-];
-
-const piano=document.getElementById("piano");
-
-notes.forEach(freq=>{
-
-let key=document.createElement("div");
-key.className="key";
-
-key.onclick=()=>playNote(freq);
-
-piano.appendChild(key);
-
-});
-
-function playNote(freq){
-
-let osc=ctx.createOscillator();
-let gain=ctx.createGain();
-
-osc.frequency.value=freq;
-
-osc.connect(gain);
-gain.connect(analyser);
-
-osc.start();
-
-gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+1);
-
-osc.stop(ctx.currentTime+1);
-
-}
-
-////////////////////////
-// DRUM MACHINE
-////////////////////////
-
-function createRow(id){
-
-let arr=new Array(16).fill(false);
-let container=document.getElementById(id);
-
-arr.forEach((v,i)=>{
-
-let cell=document.createElement("div");
-cell.className="cell";
-
-cell.onclick=()=>{
-arr[i]=!arr[i];
-cell.classList.toggle("active");
-};
-
-container.appendChild(cell);
-
-});
-
-return arr;
-
-}
-
-const kick=createRow("kick");
-const snare=createRow("snare");
-const hihat=createRow("hihat");
-
-let step=0;
-let timer;
-
-function play(){
-
-let bpm=document.getElementById("bpm").value;
-let interval=60000/bpm/4;
-
-timer=setInterval(()=>{
-
-if(kick[step])kickSound();
-if(snare[step])snareSound();
-if(hihat[step])hatSound();
-
-step=(step+1)%16;
-
-},interval);
-
-}
-
-function stop(){
-clearInterval(timer);
-}
-
-function kickSound(){
-
-let osc=ctx.createOscillator();
-let gain=ctx.createGain();
-
-osc.frequency.setValueAtTime(150,ctx.currentTime);
-osc.frequency.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
-
-osc.connect(gain);
-gain.connect(analyser);
-
-osc.start();
-osc.stop(ctx.currentTime+0.5);
-
-}
-
-function snareSound(){
-
-let noise=ctx.createBufferSource();
-let buffer=ctx.createBuffer(1,44100,44100);
-let data=buffer.getChannelData(0);
-
-for(let i=0;i<44100;i++){
-data[i]=Math.random()*2-1;
-}
-
-noise.buffer=buffer;
-
-let gain=ctx.createGain();
-
-noise.connect(gain);
-gain.connect(analyser);
-
-noise.start();
-noise.stop(ctx.currentTime+0.2);
-
-}
-
-function hatSound(){
-
-let osc=ctx.createOscillator();
-osc.type="square";
-osc.frequency.value=800;
-
-let gain=ctx.createGain();
-
-osc.connect(gain);
-gain.connect(analyser);
-
-osc.start();
-osc.stop(ctx.currentTime+0.05);
-
-}
-
-////////////////////////
-// VISUALIZER
-////////////////////////
-
-const canvas=document.getElementById("visual");
-const c=canvas.getContext("2d");
-
-canvas.width=600;
-canvas.height=200;
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
 function draw(){
 
-requestAnimationFrame(draw);
+let density = document.getElementById("density").value;
+let chaos = document.getElementById("chaos").value;
+let rotation = document.getElementById("rotation").value * Math.PI / 180;
 
-let data=new Uint8Array(analyser.frequencyBinCount);
-analyser.getByteFrequencyData(data);
+ctx.fillStyle="black";
+ctx.fillRect(0,0,canvas.width,canvas.height);
 
-c.fillStyle="black";
-c.fillRect(0,0,canvas.width,canvas.height);
+for(let i=0;i<density;i++){
 
-let width=canvas.width/data.length;
+let angle = i * chaos * 0.01;
 
-for(let i=0;i<data.length;i++){
+let r = i * 0.05;
 
-let h=data[i];
+let x = canvas.width/2 + Math.cos(angle + rotation) * r;
+let y = canvas.height/2 + Math.sin(angle + rotation) * r;
 
-c.fillStyle="cyan";
-c.fillRect(i*width,canvas.height-h,width,h);
+ctx.fillStyle = "hsl("+i%360+",100%,60%)";
+
+ctx.fillRect(x,y,2,2);
 
 }
 
