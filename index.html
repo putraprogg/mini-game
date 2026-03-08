@@ -2,8 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Qunut Memorizer Pro</title>
-
+<title>Qunut Memorizer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -14,12 +13,6 @@ margin:0;
 background:#0f172a;
 color:white;
 text-align:center;
-transition:0.3s;
-}
-
-.light{
-background:#f2f2f2;
-color:black;
 }
 
 header{
@@ -43,55 +36,25 @@ padding:20px;
 }
 
 .line{
-font-size:32px;
+font-size:30px;
 direction:rtl;
-margin:15px;
+margin:12px;
 padding:10px;
 border-radius:10px;
-background:rgba(255,255,255,0.05);
+background:#1e293b;
 cursor:pointer;
 }
 
 .hidden{
-color:transparent;
-text-shadow:0 0 12px white;
-}
-
-.word{
-padding:4px;
-border-radius:6px;
-}
-
-.highlight{
-background:#ffd54f;
-color:black;
+background:#334155;
+color:#334155;
 }
 
 .card{
-background:rgba(255,255,255,0.05);
+background:#1e293b;
 padding:20px;
-border-radius:12px;
-margin:20px 0;
-}
-
-input{
-padding:8px;
-font-size:18px;
-width:80%;
-}
-
-.progress{
-height:20px;
-background:#333;
 border-radius:10px;
-overflow:hidden;
-margin-top:10px;
-}
-
-.bar{
-height:100%;
-width:0%;
-background:#00ff9d;
+margin:10px;
 }
 
 .drag{
@@ -102,29 +65,36 @@ border-radius:8px;
 cursor:grab;
 }
 
+.dropzone{
+min-height:50px;
+margin:8px;
+padding:10px;
+border:2px dashed #555;
+border-radius:8px;
+}
+
+.correct{
+background:#16a34a;
+}
+
 </style>
 </head>
 
 <body>
 
-<header>🕌 Qunut Memorizer Pro</header>
+<header>🕌 Qunut Memorizer</header>
 
 <nav>
 <button onclick="show('read')">📖 Baca</button>
 <button onclick="show('memorize')">🧠 Hafalan</button>
-<button onclick="show('typing')">✍ Ketik</button>
-<button onclick="show('game')">🧩 Game</button>
-<button onclick="show('voice')">🎤 Voice Test</button>
-<button onclick="toggleTheme()">🌙 Mode</button>
+<button onclick="show('game')">🧩 Game Susun</button>
 </nav>
 
 <div class="container">
 
 <div id="read"></div>
 <div id="memorize" style="display:none"></div>
-<div id="typing" style="display:none"></div>
 <div id="game" style="display:none"></div>
-<div id="voice" style="display:none"></div>
 
 </div>
 
@@ -155,12 +125,6 @@ document.getElementById(id).style.display="block"
 
 }
 
-function toggleTheme(){
-
-document.body.classList.toggle("light")
-
-}
-
 function renderRead(){
 
 const div=document.getElementById("read")
@@ -169,52 +133,11 @@ lines.forEach(line=>{
 
 let d=document.createElement("div")
 d.className="line"
-
-let words=line.split(" ")
-
-words.forEach(w=>{
-let span=document.createElement("span")
-span.className="word"
-span.textContent=w+" "
-d.appendChild(span)
-})
+d.textContent=line
 
 div.appendChild(d)
 
 })
-
-let btn=document.createElement("button")
-btn.innerText="▶ Auto Read"
-btn.onclick=autoRead
-div.appendChild(btn)
-
-}
-
-function autoRead(){
-
-let words=document.querySelectorAll(".word")
-let i=0
-
-function step(){
-
-if(i>0) words[i-1].classList.remove("highlight")
-
-if(i<words.length){
-
-words[i].classList.add("highlight")
-
-let u=new SpeechSynthesisUtterance(words[i].textContent)
-u.lang="ar"
-speechSynthesis.speak(u)
-
-i++
-setTimeout(step,800)
-
-}
-
-}
-
-step()
 
 }
 
@@ -222,51 +145,19 @@ function renderMemorize(){
 
 const div=document.getElementById("memorize")
 
-lines.forEach(l=>{
+lines.forEach(line=>{
 
 let d=document.createElement("div")
 d.className="line hidden"
-d.textContent=l
+d.textContent=line
 
-d.onclick=()=>d.classList.remove("hidden")
+d.onclick=()=>{
+
+d.classList.remove("hidden")
+
+}
 
 div.appendChild(d)
-
-})
-
-}
-
-function renderTyping(){
-
-const div=document.getElementById("typing")
-
-let score=0
-
-lines.forEach((l,i)=>{
-
-let card=document.createElement("div")
-card.className="card"
-
-let p=document.createElement("p")
-p.innerText="Ketik kalimat "+(i+1)
-
-let input=document.createElement("input")
-
-input.oninput=()=>{
-
-if(input.value.trim()==l){
-
-input.style.background="#00ff9d"
-score++
-
-}
-
-}
-
-card.appendChild(p)
-card.appendChild(input)
-
-div.appendChild(card)
 
 })
 
@@ -278,53 +169,62 @@ const div=document.getElementById("game")
 
 let shuffled=[...lines].sort(()=>Math.random()-0.5)
 
-shuffled.forEach(l=>{
+let dragArea=document.createElement("div")
+let dropArea=document.createElement("div")
+
+dragArea.innerHTML="<h3>Drag kalimat</h3>"
+dropArea.innerHTML="<h3>Susun di sini</h3>"
+
+shuffled.forEach((line,i)=>{
 
 let d=document.createElement("div")
 d.className="drag"
 d.draggable=true
-d.innerText=l
+d.id="drag"+i
+d.textContent=line
 
 d.ondragstart=e=>{
-e.dataTransfer.setData("text",l)
+e.dataTransfer.setData("text",d.id)
 }
 
-div.appendChild(d)
+dragArea.appendChild(d)
 
 })
 
+lines.forEach((line,i)=>{
+
+let zone=document.createElement("div")
+zone.className="dropzone"
+
+zone.ondragover=e=>e.preventDefault()
+
+zone.ondrop=e=>{
+
+e.preventDefault()
+
+let id=e.dataTransfer.getData("text")
+let el=document.getElementById(id)
+
+zone.appendChild(el)
+
+if(el.textContent==lines[i]){
+zone.classList.add("correct")
 }
 
-function renderVoice(){
-
-const div=document.getElementById("voice")
-
-let btn=document.createElement("button")
-btn.innerText="🎤 Start Voice Test"
-
-btn.onclick=()=>{
-
-const rec=new(window.SpeechRecognition||window.webkitSpeechRecognition)()
-
-rec.lang="ar-SA"
-
-rec.start()
-
-rec.onresult=e=>{
-alert("Kamu membaca:\n"+e.results[0][0].transcript)
 }
 
-}
+dropArea.appendChild(zone)
 
-div.appendChild(btn)
+})
+
+div.appendChild(dragArea)
+div.appendChild(dropArea)
 
 }
 
 renderRead()
 renderMemorize()
-renderTyping()
 renderGame()
-renderVoice()
 
 </script>
 
