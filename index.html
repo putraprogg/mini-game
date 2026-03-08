@@ -1,114 +1,216 @@
-```html
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Formula Visualizer</title>
+<title>Hafalan Doa Qunut Interaktif</title>
 
 <style>
-
 body{
-margin:0;
-background:#0f0f18;
+font-family: "Segoe UI", sans-serif;
+background: linear-gradient(135deg,#1d2671,#c33764);
 color:white;
-font-family:Arial;
 text-align:center;
+padding:30px;
 }
 
-#controls{
-padding:15px;
-background:#111;
+.container{
+max-width:900px;
+margin:auto;
+background:rgba(0,0,0,0.35);
+padding:25px;
+border-radius:15px;
+box-shadow:0 0 20px rgba(0,0,0,0.5);
+}
+
+.arab{
+font-size:32px;
+line-height:1.9;
+direction:rtl;
+margin-top:20px;
+}
+
+.highlight{
+background:#ffd54f;
+color:black;
+padding:3px 6px;
+border-radius:5px;
+}
+
+button{
+margin:8px;
+padding:10px 18px;
+border:none;
+border-radius:8px;
+font-size:16px;
+cursor:pointer;
+background:#00e5ff;
+}
+
+button:hover{
+background:#18ffff;
 }
 
 input{
-width:300px;
+font-size:18px;
 padding:6px;
+margin:4px;
+border-radius:5px;
+border:none;
+text-align:center;
 }
 
-canvas{
-background:black;
-display:block;
-margin:auto;
+.progress{
+margin-top:20px;
+height:18px;
+background:#333;
+border-radius:10px;
+overflow:hidden;
+}
+
+.bar{
+height:100%;
+width:0%;
+background:#00ff9d;
+transition:0.3s;
+}
+
+.hiddenWord{
+background:#fff;
+color:black;
+border-radius:6px;
+padding:3px;
 }
 
 </style>
-
 </head>
-
 <body>
 
-<div id="controls">
+<div class="container">
 
-Formula f(x,y):
+<h1>🕌 Hafalan Doa Qunut</h1>
+<p>Belajar menghafal dengan membaca, mendengar, dan latihan.</p>
 
-<input id="formula" value="sin(x)+cos(y)">
+<div id="doa" class="arab"></div>
 
-<button onclick="draw()">Draw</button>
+<br>
 
-Zoom
-<input type="range" id="zoom" min="10" max="100" value="40">
+<button onclick="startRead()">▶ Baca Bersama</button>
+<button onclick="startMemorize()">🧠 Mode Hafalan</button>
+<button onclick="resetAll()">🔄 Ulangi</button>
+
+<div class="progress">
+<div class="bar" id="bar"></div>
+</div>
+
+<p id="score"></p>
 
 </div>
 
-<canvas id="canvas" width="800" height="500"></canvas>
-
 <script>
 
-const canvas=document.getElementById("canvas");
-const ctx=canvas.getContext("2d");
+let text = `اَللّهُمَّ اهْدِنِىْ فِيْمَنْ هَدَيْتَ وَعَافِنِى فِيْمَنْ عَافَيْتَ وَتَوَلَّنِىْ فِيْمَنْ تَوَلَّيْتَ وَبَارِكْ لِىْ فِيْمَا اَعْطَيْتَ وَقِنِيْ شَرَّمَا قَضَيْتَ فَاِنَّكَ تَقْضِىْ وَلاَ يُقْضَى عَلَيْكَ وَاِنَّهُ لاَ يَذِلُّ مَنْ وَالَيْتَ وَلاَ يَعِزُّ مَنْ عَادَيْتَ تَبَارَكْتَ رَبَّنَا وَتَعَالَيْتَ فَلَكَ الْحَمْدُ عَلَى مَا قَضَيْتَ وَاَسْتَغْفِرُكَ وَاَتُوْبُ اِلَيْكَ وَصَلَّى اللهُ عَلَى سَيِّدَنَا مُحَمَّدٍ النَّبِيِّ اْلاُمِّيِّ وَعَلَى آلِهِ وَصَحْبِهِ وَسَلَّمَ`;
 
-function draw(){
+let words = text.split(" ");
+let container = document.getElementById("doa");
 
-let formula=document.getElementById("formula").value;
+function render(wordsArr){
+container.innerHTML = "";
+wordsArr.forEach(w=>{
+let span=document.createElement("span");
+span.innerText=w+" ";
+container.appendChild(span);
+});
+}
 
-let zoom=document.getElementById("zoom").value;
+render(words);
 
-let f;
+let index=0;
 
-try{
-f=new Function("x","y","return "+formula);
-}catch(e){
-alert("Invalid formula");
+function startRead(){
+
+let spans=document.querySelectorAll("#doa span");
+
+let interval=setInterval(()=>{
+
+spans.forEach(s=>s.classList.remove("highlight"));
+
+if(index>=spans.length){
+clearInterval(interval);
+index=0;
 return;
 }
 
-let w=canvas.width;
-let h=canvas.height;
+spans[index].classList.add("highlight");
 
-ctx.fillStyle="black";
-ctx.fillRect(0,0,w,h);
+let utter = new SpeechSynthesisUtterance(spans[index].innerText);
+utter.lang="ar";
+speechSynthesis.speak(utter);
 
-for(let px=0;px<w;px++){
+index++;
 
-for(let py=0;py<h;py++){
-
-let x=(px-w/2)/zoom;
-let y=(py-h/2)/zoom;
-
-let z;
-
-try{
-z=f(x,y);
-}catch{
-continue;
-}
-
-let color=(Math.sin(z)+1)*120;
-
-ctx.fillStyle="hsl("+color+",100%,50%)";
-
-ctx.fillRect(px,py,1,1);
+},1200);
 
 }
 
-}
+function startMemorize(){
+
+container.innerHTML="";
+let missing=[];
+
+words.forEach((w,i)=>{
+
+if(Math.random()<0.25){
+missing.push(i);
+
+let input=document.createElement("input");
+input.size=w.length;
+
+input.dataset.answer=w;
+
+input.oninput=check;
+
+container.appendChild(input);
+}else{
+
+let span=document.createElement("span");
+span.innerText=w+" ";
+container.appendChild(span);
 
 }
 
-draw();
+});
+
+}
+
+function check(){
+
+let inputs=document.querySelectorAll("input");
+let correct=0;
+
+inputs.forEach(inp=>{
+if(inp.value.trim()===inp.dataset.answer){
+inp.style.background="#9cff9c";
+correct++;
+}else{
+inp.style.background="#ffb0b0";
+}
+});
+
+let percent=Math.floor((correct/inputs.length)*100);
+
+document.getElementById("bar").style.width=percent+"%";
+
+document.getElementById("score").innerText="Progress Hafalan: "+percent+"%";
+
+}
+
+function resetAll(){
+render(words);
+document.getElementById("bar").style.width="0%";
+document.getElementById("score").innerText="";
+}
 
 </script>
 
 </body>
 </html>
-```
